@@ -563,6 +563,7 @@ from image import Image as Image2
 from progressbar import ProgressBar
 from one2one import One2One
 from richtextbox import RichTextBox
+from browser import Browser
 
 
 WIDGETS_TYPE = {
@@ -592,4 +593,5 @@ WIDGETS_TYPE = {
     'progressbar': (ProgressBar, 1, False, False),
     'one2one': (One2One, 1, False, False),
     'richtext': (RichTextBox, 1, True, True),
+    'browser': (Browser, 1, True, True),
 }

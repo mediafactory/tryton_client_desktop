@@ -33,9 +33,14 @@ class Window(object):
                 limit=limit, auto_refresh=auto_refresh,
                 search_value=search_value)
         else:
-            from board import Board
-            win = Board(model, view_ids and view_ids[0] or None,
-                context=context, name=name, auto_refresh=auto_refresh)
+            if 'board' in mode:
+                from board import Board
+                win = Board(model, view_ids and view_ids[0] or None,
+                    context=context, name=name, auto_refresh=auto_refresh)
+            else:
+                from browser import Browser
+                win = Browser(model, view_ids and view_ids[0] or None,
+                    context=context, name=name, auto_refresh=auto_refresh)
         win.icon = icon
         Main.get_main().win_add(win, hide_current=Window.hide_current,
             allow_similar=Window.allow_similar)
