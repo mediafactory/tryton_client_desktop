@@ -7,6 +7,9 @@ written in Python and use Postgresql as database engine.
 It is the core base of an Open Source ERP.
 It provides modularity, scalability and security.
 
+This fork of tryton hosts features not acceptd by the core of trton.org
+- browser widget
+
 Installing
 ----------
 
