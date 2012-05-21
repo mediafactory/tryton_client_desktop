@@ -1,15 +1,17 @@
 from tryton.gui.window import Window
 from tryton.version import VERSION
 try:
+    #raise Exception('nix')
     import webkit
 except:
     webkit = None
     
 try:
+    #import cairo
     import win32con
     
-    from ctypes import *
-    from ctypes.wintypes import *
+    #from ctypes import *
+    #from ctypes.wintypes import *
     from comtypes import IUnknown
     from comtypes.automation import IDispatch, VARIANT
     from comtypes.client import wrap
@@ -23,12 +25,19 @@ except:
 from urlparse import urlparse
 import webbrowser
 import gtk
+import pygtk
+pygtk.require("2.0")
 
 # TODO: limit access to websites
 # TODO: keepalive to server
 # TODO: make actions callable (better through tryton.action.main.executeAction?)
 # TODO: security setting, if tryton:// allowed => origin = safe sites?
 # TODO: set UserAgent
+# TODO: switch between browsers
+# TODO: Events in IE
+# TODO: Focus GTK IE
+# TODO: paint on start (resize)
+
 
 class Webkit(gtk.ScrolledWindow):
     safeDomains = []
@@ -44,10 +53,9 @@ class Webkit(gtk.ScrolledWindow):
         self.set_size_request(-1, 80)
         
         self.webview = webkit.WebView()
-        self.webview.settings = self.get_settings()
+        self.webview.settings = self.webview.get_settings()
         self.webview.settings.props.user_agent += ' tryton/%s' % VERSION
         #self.webview.set_border_width(0)
-        #self.scrolledwindow.set_border_width(0)
         #self.webview.settings.set_property('enable-default-context-menu', False)
         self.add(self.webview)
 
