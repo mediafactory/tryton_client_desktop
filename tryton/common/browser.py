@@ -7,7 +7,6 @@ except:
     webkit = None
     
 try:
-    #import cairo
     import win32con
     
     from ctypes import *
@@ -32,11 +31,9 @@ pygtk.require("2.0")
 # TODO: keepalive to server
 # TODO: make actions callable (better through tryton.action.main.executeAction?)
 # TODO: security setting, if tryton:// allowed => origin = safe sites?
-# TODO: set UserAgent
-# TODO: switch between browsers
+# TODO: set UserAgent in IE
 # TODO: Events in IE
 # TODO: Focus GTK IE
-# TODO: paint on start (resize)
 
 
 class Webkit(gtk.ScrolledWindow):
@@ -125,6 +122,8 @@ class IE(gtk.DrawingArea):
         # Create a Gtk window that refers to the native AtlAxWin window.
         self.gtkAtlAxWin = gtk.gdk.window_foreign_new(long(self.atlAxWinHwnd))
 
+        self.gtkAtlAxWin.maximize()
+        
         if self.startURL:
             v = byref(VARIANT())
             self.pBrowser.Navigate(self.startURL, v, v, v, v)
@@ -133,7 +132,8 @@ class IE(gtk.DrawingArea):
         print url
 
     def on_container_size(self, widget, sizeAlloc):
-        self.gtkAtlAxWin.move_resize(0, 0, sizeAlloc.width, sizeAlloc.height)
+        #self.gtkAtlAxWin.move_resize(0, 0, sizeAlloc.width, sizeAlloc.height)
+        self.gtkAtlAxWin.maximize()
 
     def on_container_focus(self, widget, data):
         # Pass the focus to IE.  First get the HWND of the IE control; this
