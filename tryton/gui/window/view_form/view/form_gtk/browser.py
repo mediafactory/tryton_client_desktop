@@ -4,6 +4,7 @@ browser
 import gtk
 from tryton.common.browser import Webkit, IE
 from interface import WidgetInterface
+from tryton.config import CONFIG
 
 class Browser(WidgetInterface):
     lastURL = ''
@@ -13,17 +14,14 @@ class Browser(WidgetInterface):
 
         self.widget = gtk.VBox()
         
-        # try webkit first
-        try:
+        if CONFIG['browser.type'] == 'webkit':
             self.webview = Webkit()
             self.widget.add(self.webview)
-        except:
-            # ok, now try IE
-            try:
-                self.webview = IE()
-                self.widget.add(self.webview)
-            except:
-                pass
+            
+        else:
+            self.webview = IE()
+            self.widget.add(self.webview)
+            
         self.widget.show_all()
         
     def grab_focus(self):

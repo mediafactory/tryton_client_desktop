@@ -5,6 +5,7 @@
 import gtk
 from tryton.common.browser import Webkit, IE
 import xml.dom.minidom
+from tryton.config import CONFIG
 
 class ViewBrowser(object):
     'View browser'
@@ -18,20 +19,15 @@ class ViewBrowser(object):
 
         self.widget = gtk.VBox()
 
-        # try webkit first
-        try:
+        if CONFIG['browser.type'] == 'webkit':
             self.webview = Webkit()
             self.webview.webview.connect("document-load-finished", self.on_document_load_finished)
             self.widget.add(self.webview)
             
-        except:
-            # ok, now try IE
-            try:
-                self.webview = IE()
-                self.widget.add(self.webview)
-            except:
-                pass
-            
+        else:
+            self.webview = IE()
+            self.widget.add(self.webview)
+
         self.widget.show_all()
         
         url = xml_dom.documentElement.attributes.get('url')
