@@ -43,14 +43,14 @@ class TabContent(object):
         self.widget.pack_start(self.scrolledwindow)
 
     def make_title_bar(self):
-        title = gtk.Label()
-        title.set_use_markup(True)
-        title.modify_font(pango.FontDescription("14"))
-        title.set_label('<b>' + self.name + '</b>')
-        title.set_padding(10, 4)
-        title.set_alignment(0.0, 0.5)
-        title.modify_fg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#000000"))
-        title.show()
+        self.title = gtk.Label()
+        self.title.set_use_markup(True)
+        self.title.modify_font(pango.FontDescription("14"))
+        self.title.set_label('<b>' + self.name + '</b>')
+        self.title.set_padding(10, 4)
+        self.title.set_alignment(0.0, 0.5)
+        self.title.modify_fg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#000000"))
+        self.title.show()
 
         title_menu = gtk.MenuBar()
         title_item = gtk.MenuItem('')
@@ -82,7 +82,7 @@ class TabContent(object):
         self.status_label.show()
 
         hbox = gtk.HBox()
-        hbox.pack_start(title, expand=True, fill=True)
+        hbox.pack_start(self.title, expand=True, fill=True)
         hbox.pack_start(vbox, expand=False, fill=True, padding=20)
         hbox.pack_start(self.status_label, expand=False, fill=True)
         hbox.show()
