@@ -10,8 +10,8 @@ try:
     #import cairo
     import win32con
     
-    #from ctypes import *
-    #from ctypes.wintypes import *
+    from ctypes import *
+    from ctypes.wintypes import *
     from comtypes import IUnknown
     from comtypes.automation import IDispatch, VARIANT
     from comtypes.client import wrap
@@ -89,11 +89,16 @@ class Webkit(gtk.ScrolledWindow):
         self.webview.open(url)
 
 class IE(gtk.DrawingArea):
+    __gsignals__ = { "expose-event": "override" }
+
     def __init__(self, *args, **kwargs):
         if not win32con:
             raise Exception('some windows librarys not found or boundled with tryton')
+        super(IE, self).__init__(*args, **kwargs)
+        self.startURL = None
 
-        super(IE, self).__init__(*args, **kwargs)            
+    # Handle the expose-event by drawing
+    def do_expose_event(self, event):
         # Make the container accept the focus and pass it to the control;
         # this makes the Tab key pass focus to IE correctly.
         self.set_property("can-focus", True)
@@ -106,7 +111,7 @@ class IE(gtk.DrawingArea):
         hInstance = kernel32.GetModuleHandleA(None)
         parentHwnd = self.window.handle
         self.atlAxWinHwnd = \
-            user32.CreateWindowExA(0, "AtlAxWin", "http://www.pygtk.org",
+            user32.CreateWindowExA(0, "AtlAxWin", "about:blank",
                             win32con.WS_VISIBLE | win32con.WS_CHILD |
                             win32con.WS_HSCROLL | win32con.WS_VSCROLL,
                             0, 0, 100, 100, parentHwnd, None, hInstance, 0)
@@ -120,6 +125,13 @@ class IE(gtk.DrawingArea):
         # Create a Gtk window that refers to the native AtlAxWin window.
         self.gtkAtlAxWin = gtk.gdk.window_foreign_new(long(self.atlAxWinHwnd))
 
+        if self.startURL:
+            v = byref(VARIANT())
+            self.pBrowser.Navigate(self.startURL, v, v, v, v)
+
+    def BeforeNavigate2(self, this, pDisp, url, Flags, TargetFrameName, PostData, Headers, Cancel):
+        print url
+
     def on_container_size(self, widget, sizeAlloc):
         self.gtkAtlAxWin.move_resize(0, 0, sizeAlloc.width, sizeAlloc.height)
 
@@ -132,5 +144,8 @@ class IE(gtk.DrawingArea):
         user32.SetFocus(ieHwnd)
         
     def open(self, url):
-        v = byref(VARIANT())
-        self.pBrowser.Navigate(url, v, v, v, v)
+        if not hasattr(self, 'pBrowser'):
+            self.startURL = url
+        else:
+            v = byref(VARIANT())
+            self.pBrowser.Navigate(url, v, v, v, v)
