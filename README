@@ -9,6 +9,10 @@ It provides modularity, scalability and security.
 
 This fork of tryton hosts features not acceptd by the core of trton.org
 - browser widget
+- different style
+
+You need https://github.com/mediafactory/tryton_core_daemon to get the additional features flying...
+This fork is still compatible with tryton.org, but you can not use the additional features!
 
 Installing
 ----------
