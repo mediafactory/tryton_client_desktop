@@ -193,6 +193,7 @@ if os.name == 'nt':
         import shutil
         import pytz
         import zipfile
+        import comtypes.gen.SHDocVw # for IE
 
         gtk_dir = find_gtk_dir()
 
@@ -255,11 +256,16 @@ if os.name == 'nt':
                     'MS-Windows')):
             shutil.rmtree(os.path.join(dist_dir, 'share', 'themes',
                     'MS-Windows'))
+        '''
+        # more themes: http://art.gnome.org/themes/gtk2
+        # no theme is better than the provided windows theme
         shutil.copytree(os.path.join(gtk_dir, 'share', 'themes', 'MS-Windows'),
             os.path.join(dist_dir, 'share', 'themes', 'MS-Windows'))
+        '''
 
         makensis = find_makensis()
         if makensis:
+            print 'rinning nsis'
             from subprocess import Popen
             Popen([makensis, "/DVERSION=" + VERSION,
                 str(os.path.join(os.path.dirname(__file__),
@@ -267,6 +273,9 @@ if os.name == 'nt':
             Popen([makensis, "/DVERSION=" + VERSION,
                 str(os.path.join(os.path.dirname(__file__),
                     'setup-single.nsi'))]).wait()
+
+        print 'py2exe done'
+        
 elif sys.platform == 'darwin':
 
     def find_gtk_dir():
