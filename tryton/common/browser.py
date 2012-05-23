@@ -34,7 +34,6 @@ pygtk.require("2.0")
 # TODO: keepalive to server
 # TODO: make actions callable (better through tryton.action.main.executeAction?)
 # TODO: security setting, if tryton:// allowed => origin = safe sites?
-# TODO: open tryton://
 # TODO: set UserAgent in IE => only via registry...
 # TODO: Focus GTK IE
 
@@ -192,7 +191,7 @@ class IE(gtk.DrawingArea):
 
     # some DWebBrowserEvents2
     def BeforeNavigate2(self, this, *args):
-        print "BeforeNavigate2", args
+        #print "BeforeNavigate2", args
         uri = urlparse(cast(args[1]._.c_void_p, POINTER(VARIANT))[0].value)
         if uri.scheme == 'tryton':
             if uri.netloc == 'model':
@@ -205,8 +204,7 @@ class IE(gtk.DrawingArea):
                 model = uri.path[1:]
                 
                 Window.create(view_ids, model, mode=mode, name=name)
-            args[6].value = True
-        
+            cast(args[6]._.c_void_p, POINTER(VARIANT_BOOL))[0] = True        
 
         if len(self.safeDomains) > 0:
             # FIXME: get safeDomains from server (regEx?) and open Browser if not safe...
