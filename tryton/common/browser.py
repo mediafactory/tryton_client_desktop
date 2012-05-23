@@ -8,16 +8,19 @@ except:
     
 try:
     import win32con
+    import mshtmlevents
     
     from ctypes import *
     from ctypes.wintypes import *
     from comtypes import IUnknown
     from comtypes.automation import IDispatch, VARIANT
     from comtypes.client import wrap
+    from comtypes.gen import SHDocVw
     
     kernel32 = windll.kernel32
     user32 = windll.user32
     atl = windll.atl                  # If this fails, you need atl.dll
+    
 except:
     win32con = None
     
@@ -31,8 +34,8 @@ pygtk.require("2.0")
 # TODO: keepalive to server
 # TODO: make actions callable (better through tryton.action.main.executeAction?)
 # TODO: security setting, if tryton:// allowed => origin = safe sites?
-# TODO: set UserAgent in IE
-# TODO: Events in IE
+# TODO: open tryton://
+# TODO: set UserAgent in IE => only via registry...
 # TODO: Focus GTK IE
 
 
@@ -85,17 +88,56 @@ class Webkit(gtk.ScrolledWindow):
     def open(self, url):
         self.webview.open(url)
 
+class Event:
+    def __init__(self):
+        self.handlers = set()
+
+    def handle(self, handler):
+        self.handlers.add(handler)
+        return self
+
+    def unhandle(self, handler):
+        try:
+            self.handlers.remove(handler)
+        except:
+            raise ValueError("Handler is not handling this event, so cannot unhandle it.")
+        return self
+
+    def fire(self, *args, **kargs):
+        for handler in self.handlers:
+            handler(*args, **kargs)
+
+    def getHandlerCount(self):
+        return len(self.handlers)
+
+    __iadd__ = handle
+    __isub__ = unhandle
+    __call__ = fire
+    __len__  = getHandlerCount
+        
 class IE(gtk.DrawingArea):
     __gsignals__ = { "expose-event": "override" }
 
     def __init__(self, *args, **kwargs):
+        self.workaround_ignore_first_doc_complete = False
+        self.ie_initialised = False
+        self.already_initialised = False
+        self.window_handler = None
+        self.node_handlers = {}
+        self.startURL = None
+        self.browserTitleChanged = Event()
+        self.safeDomains = []
+        
         if not win32con:
             raise Exception('some windows librarys not found or boundled with tryton')
         super(IE, self).__init__(*args, **kwargs)
-        self.startURL = None
 
     # Handle the expose-event by drawing
     def do_expose_event(self, event):
+        if self.ie_initialised:
+            return
+        
+        self.ie_initialised = True
         # Make the container accept the focus and pass it to the control;
         # this makes the Tab key pass focus to IE correctly.
         self.set_property("can-focus", True)
@@ -118,6 +160,10 @@ class IE(gtk.DrawingArea):
         atl.AtlAxGetControl(self.atlAxWinHwnd, byref(pBrowserUnk))
         # the wrap call querys for the default interface
         self.pBrowser = wrap(pBrowserUnk)
+        self.pBrowser.AddRef()
+        
+        self.conn = mshtmlevents.GetEvents(self.pBrowser, sink=self,
+                        interface=SHDocVw.DWebBrowserEvents2)
         
         # Create a Gtk window that refers to the native AtlAxWin window.
         self.gtkAtlAxWin = gtk.gdk.window_foreign_new(long(self.atlAxWinHwnd))
@@ -128,8 +174,72 @@ class IE(gtk.DrawingArea):
             v = byref(VARIANT())
             self.pBrowser.Navigate(self.startURL, v, v, v, v)
 
-    def BeforeNavigate2(self, this, pDisp, url, Flags, TargetFrameName, PostData, Headers, Cancel):
-        print url
+    def TitleChange(self, this, *args):
+        self.browserTitleChanged(args[0])
+        #print "OnTitleChange", args
+
+    def Visible(self, this, *args):
+        #print "OnVisible", args
+        pass
+
+    def BeforeNavigate(self, this, *args):
+        #print "BeforeNavigate", args
+        pass
+
+    def NavigateComplete(self, this, *args):
+        #print "NavigateComplete", this, args
+        return
+
+    # some DWebBrowserEvents2
+    def BeforeNavigate2(self, this, *args):
+        print "BeforeNavigate2", args
+        uri = urlparse(cast(args[1]._.c_void_p, POINTER(VARIANT))[0].value)
+        if uri.scheme == 'tryton':
+            if uri.netloc == 'model':
+                # browser => view_id = [291], model = '', res_id = None, domain = [], context = {}, mode = ['browser'], name = 'Google', limit => 0, auto_refresh = 0, search_value => [], icon => ''
+                # party.party => view_ids = [119,120], model = 'party.party', res_id = None, domain = [], context => {}, mode = ['tree', 'form'], name = 'Parteien', limit = 0, auto_refresh = 0, search_value = [], icon = ''
+                view_ids = []
+                mode = []
+                name = 'Parteien'
+                
+                model = uri.path[1:]
+                
+                Window.create(view_ids, model, mode=mode, name=name)
+            args[6].value = True
+        
+
+        if len(self.safeDomains) > 0:
+            # FIXME: get safeDomains from server (regEx?) and open Browser if not safe...
+            webbrowser.open_new_tab(req.get_uri())
+            p = cast(args[6]._.c_void_p, POINTER(VARIANT))[0].value
+            p.value = True
+
+    def NavigateComplete2(self, this, *args):
+        #print "NavigateComplete2", args
+        pass
+
+    def DocumentComplete(self, this, *args):
+        #print "DocumentComplete", args
+        if self.workaround_ignore_first_doc_complete == False:
+            # ignore first about:blank.  *sigh*...
+            # TODO: work out how to parse *args byref VARIANT
+            # in order to get at the URI.
+            self.workaround_ignore_first_doc_complete = True
+            return
+            
+        self._loaded()
+
+    def NewWindow2(self, this, *args):
+        print "NewWindow2", args
+        return
+        v = cast(args[1]._.c_void_p, POINTER(VARIANT))[0]
+        v.value = True
+
+    def NewWindow3(self, this, *args):
+        print "NewWindow3", args
+        return
+        v = cast(args[1]._.c_void_p, POINTER(VARIANT))[0]
+        v.value = True
 
     def on_container_size(self, widget, sizeAlloc):
         #self.gtkAtlAxWin.move_resize(0, 0, sizeAlloc.width, sizeAlloc.height)
@@ -149,3 +259,54 @@ class IE(gtk.DrawingArea):
         else:
             v = byref(VARIANT())
             self.pBrowser.Navigate(url, v, v, v, v)
+
+    def addEventListener(self, node, event_name, event_fn):
+        
+        rcvr = mshtmlevents._DispEventReceiver()
+        rcvr.dispmap = {0: event_fn}
+
+        rcvr.sender = node
+        ifc = rcvr.QueryInterface(IDispatch)
+        v = VARIANT(ifc)
+        setattr(node, "on"+event_name, v)
+        return ifc
+
+        rcvr = mshtmlevents.GetDispEventReceiver(MSHTML.HTMLElementEvents2, event_fn, "on%s" % event_name)
+        rcvr.sender = node
+        ifc = rcvr.QueryInterface(IDispatch)
+        node.attachEvent("on%s" % event_name, ifc)
+        return ifc
+
+    def mash_attrib(self, attrib_name):
+        return attrib_name
+
+    def _addWindowEventListener(self, event_name, event_fn):
+        
+        #print "_addWindowEventListener", event_name, event_fn
+        #rcvr = mshtmlevents.GetDispEventReceiver(MSHTML.HTMLWindowEvents,
+        #                   event_fn, "on%s" % event_name)
+        #print rcvr
+        #rcvr.sender = self.getDomWindow()
+        #print rcvr.sender
+        #ifc = rcvr.QueryInterface(IDispatch)
+        #print ifc
+        #v = VARIANT(ifc)
+        #print v
+        #setattr(self.getDomWindow(), "on%s" % event_name, v)
+        #return ifc
+
+        wnd = self.pBrowser.Document.parentWindow
+        if self.window_handler is None:
+            self.window_handler = EventHandler(self)
+            self.window_conn = mshtmlevents.GetEvents(wnd,
+                                        sink=self.window_handler,
+                                    interface=MSHTML.HTMLWindowEvents2)
+        self.window_handler.addEventListener(event_name, event_fn)
+        return event_name # hmmm...
+
+    def _loaded(self):
+        #print "loaded"
+
+        if self.already_initialised:
+            return
+        self.already_initialised = True

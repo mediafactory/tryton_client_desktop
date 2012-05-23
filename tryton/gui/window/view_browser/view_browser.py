@@ -26,6 +26,7 @@ class ViewBrowser(object):
             
         else:
             self.webview = IE()
+            self.webview.browserTitleChanged += self.on_title_changed
             self.widget.add(self.webview)
 
         self.widget.show_all()
@@ -43,3 +44,7 @@ class ViewBrowser(object):
     def on_document_load_finished(self, view, frame, data=None):
         if frame.props.title:
             self.parentObj.title.set_label('<b>' + frame.props.title + '</b>')            
+            
+    def on_title_changed(self, title):
+        if title:
+            self.parentObj.title.set_label('<b>' + title + '</b>')
