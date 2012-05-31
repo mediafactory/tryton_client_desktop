@@ -6,6 +6,8 @@ import gtk
 from tryton.common.browser import Webkit, IE
 import xml.dom.minidom
 from tryton.config import CONFIG
+from tryton.common import RPCExecute, RPCException
+import re
 
 class ViewBrowser(object):
     'View browser'
@@ -14,6 +16,7 @@ class ViewBrowser(object):
         self.context = context
         self.arch = arch
         self.parentObj = parent
+        values = []
         
         xml_dom = xml.dom.minidom.parseString(arch)
 
@@ -34,6 +37,24 @@ class ViewBrowser(object):
         url = xml_dom.documentElement.attributes.get('url')
         if url:
             url = url.value
+            
+            tag_re = re.compile('(%s.*?%s)' % (re.escape('{{'), re.escape('}}')))
+            for bit in tag_re.split(url):
+                if bit:
+                    if bit.startswith('{{'):
+                        values.append(bit[2:-2].strip())
+                        
+            if len(values) > 0:
+                try:
+                    self.values = RPCExecute('common', '', 'config', values)
+                except RPCException:
+                    raise
+                
+                for bit in tag_re.split(url):
+                    if bit:
+                        if bit.startswith('{{'):
+                            url = url.replace(bit, self.values[bit[2:-2].strip()])
+                
         else:
             url = 'about:blank'
         self.webview.open(url)
