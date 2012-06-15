@@ -9,12 +9,16 @@ except:
 try:
     import win32con
     import mshtmlevents
-    
+
     from ctypes import *
     from ctypes.wintypes import *
     from comtypes import IUnknown
     from comtypes.automation import IDispatch, VARIANT
-    from comtypes.client import wrap
+    from comtypes.client import wrap, GetModule
+    import sys
+    if not hasattr(sys, 'frozen'):
+        GetModule('atl.dll')
+        GetModule('shdocvw.dll')
     from comtypes.gen import SHDocVw
     
     kernel32 = windll.kernel32
