@@ -1,3 +1,4 @@
+from tryton.common import RPCExecute, RPCException
 from tryton.gui.window import Window
 from tryton.version import VERSION
 try:
@@ -65,6 +66,11 @@ class Webkit(gtk.ScrolledWindow):
         self.webview.connect("navigation-requested", self.on_navigation_requested)
         
     def on_navigation_requested(self, view, frame, req, data=None):
+        try:
+            RPCExecute('common', '', 'ping', '', False)
+        except RPCException:
+            raise
+
         # tryton actions implemented via URI protocoll, as only qtWebkit supports addToJavaScriptWindowObject
         uri = urlparse(req.get_uri())
         if uri.scheme == 'tryton':
@@ -196,6 +202,11 @@ class IE(gtk.DrawingArea):
     # some DWebBrowserEvents2
     def BeforeNavigate2(self, this, *args):
         #print "BeforeNavigate2", args
+        try:
+            RPCExecute('common', '', 'ping', '', False)
+        except RPCException:
+            raise
+
         uri = urlparse(cast(args[1]._.c_void_p, POINTER(VARIANT))[0].value)
         if uri.scheme == 'tryton':
             if uri.netloc == 'model':
