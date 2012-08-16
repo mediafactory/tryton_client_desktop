@@ -131,13 +131,16 @@ class TrytonClient(object):
                 time.sleep(.001)
                 return 1
             gobject.timeout_add(400, sleeper)
-
+            gobject.timeout_add(50, theMessageLoop.OneLoop)
+            #import glib
+            #glib.timeout_add(200, theMessageLoop.Run)
         try:
             if sys.platform == 'win32':
                 while not self.quit_client.isSet():
-                    theMessageLoop.OnLoop()
+                    #stheMessageLoop.OnLoop()
+                    #if gtk.events_pending():
                     with gtk.gdk.lock:
-                            gtk.main_iteration(True)
+                        gtk.main_iteration(True)
             else:
                 gtk.main()
         except KeyboardInterrupt:
