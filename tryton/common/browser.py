@@ -2,7 +2,6 @@ from tryton.common import RPCExecute, RPCException
 from tryton.gui.window import Window
 from tryton.version import VERSION
 try:
-    #raise Exception('nix')
     import webkit
 except:
     webkit = None
@@ -10,12 +9,13 @@ except:
 try:
     import win32con
     import mshtmlevents
-
+    
     from ctypes import *
     from ctypes.wintypes import *
     from comtypes import IUnknown
     from comtypes.automation import IDispatch, VARIANT
     from comtypes.client import wrap, GetModule
+    from comtypes import IUnknown, GUID, COMMETHOD
     import sys
     if not hasattr(sys, 'frozen'):
         GetModule('atl.dll')
@@ -25,6 +25,29 @@ try:
     kernel32 = windll.kernel32
     user32 = windll.user32
     atl = windll.atl                  # If this fails, you need atl.dll
+    import wtl
+    GetParent = windll.user32.GetParent
+
+    SID_SShellBrowser = GUID("{000214E2-0000-0000-C000-000000000046}")
+    
+    class IOleWindow(IUnknown):
+        _case_insensitive_ = True
+        u'IOleWindow Interface'
+        _iid_ = GUID('{00000114-0000-0000-C000-000000000046}')
+        _idlflags_ = []
+    
+        _methods_ = [
+            COMMETHOD([], HRESULT, 'GetWindow',
+                      ( ['in'], POINTER(c_void_p), 'pHwnd' ))
+            ]
+    
+    class IOleInPlaceActiveObject(IOleWindow):
+        _iid_ = GUID("{00000117-0000-0000-C000-000000000046}")
+        _idlflags_ = []
+        _methods_ = IOleWindow._methods_ + [
+            COMMETHOD([], HRESULT, 'TranslateAccelerator',
+                      ( ['in'], POINTER(MSG), 'pMsg' ))
+            ]
     
 except:
     win32con = None
@@ -36,12 +59,10 @@ import pygtk
 pygtk.require("2.0")
 
 # TODO: limit access to websites
-# TODO: keepalive to server
 # TODO: make actions callable (better through tryton.action.main.executeAction?)
 # TODO: security setting, if tryton:// allowed => origin = safe sites?
 # TODO: set UserAgent in IE => only via registry...
 # TODO: Focus GTK IE
-
 
 class Webkit(gtk.ScrolledWindow):
     safeDomains = []
@@ -140,7 +161,11 @@ class IE(gtk.DrawingArea):
         if not win32con:
             raise Exception('some windows librarys not found or boundled with tryton')
         super(IE, self).__init__(*args, **kwargs)
-
+        
+    def __del__(self):
+        self.cleanup(self)
+        atl.AtlAxWinTerm()
+        
     # Handle the expose-event by drawing
     def do_expose_event(self, event):
         if self.ie_initialised:
@@ -179,9 +204,31 @@ class IE(gtk.DrawingArea):
 
         self.gtkAtlAxWin.maximize()
         
+        #global msg loop filter needed, see PreTranslateMessage
+        wtl.GetMessageLoop().AddFilter(self)
+        self.cleanup = wtl.GetMessageLoop().RemoveFilter
+        
         if self.startURL:
             v = byref(VARIANT())
             self.pBrowser.Navigate(self.startURL, v, v, v, v)
+
+    #filter needed to make 'del' and other accel keys work
+    #within IE control. @see http://www.microsoft.com/mind/0499/faq/faq0499.asp
+    def PreTranslateMessage(self, msg):
+        #here any keyboard message from the app passes:
+        if msg.message >= win32con.WM_KEYFIRST and  msg.message <= win32con.WM_KEYLAST:
+            #now we see if the control which sends these msgs is a child of
+            #this axwindow (for instance input control embedded in html page)
+            parent = msg.hWnd
+            while parent:
+                parent = GetParent(int(parent))
+                if parent == self.window.handle:
+                    #yes its a child of mine
+                    app = self.pBrowser.Application
+                    ao = app.QueryInterface(IOleInPlaceActiveObject)
+                    if ao.TranslateAccelerator(byref(msg)) == 0:
+                        #translation has happened
+                        return 1
 
     def TitleChange(self, this, *args):
         self.browserTitleChanged(args[0])
