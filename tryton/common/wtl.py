@@ -206,13 +206,14 @@ class MessageLoop:
                 TranslateMessage(lpmsg)
                 DispatchMessage(lpmsg)
       
-    def OnLoop(self):          
+    def OneLoop(self):          
         msg = MSG()
         lpmsg = byref(msg)
         if GetMessage(lpmsg, 0, 0, 0):
             if not self.PreTranslateMessage(msg):
                 TranslateMessage(lpmsg)
                 DispatchMessage(lpmsg)
+        return True
                     
     def PreTranslateMessage(self, msg):
         for filter in self.m_filters:
