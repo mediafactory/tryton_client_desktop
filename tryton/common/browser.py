@@ -222,7 +222,7 @@ class IE(gtk.DrawingArea):
             parent = msg.hWnd
             while parent:
                 parent = GetParent(int(parent))
-                if parent == self.window.handle:
+                if self.window and parent == self.window.handle:
                     #yes its a child of mine
                     app = self.pBrowser.Application
                     ao = app.QueryInterface(IOleInPlaceActiveObject)
