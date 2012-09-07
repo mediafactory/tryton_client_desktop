@@ -29,7 +29,6 @@ from tryton import gui
 from tryton.ipc import Client as IPCClient
 import time
 import signal
-from tryton.common.wtl import theMessageLoop
 
 if not hasattr(gtk.gdk, 'lock'):
     class _Lock(object):
@@ -41,6 +40,8 @@ if not hasattr(gtk.gdk, 'lock'):
     gtk.gdk.lock = _Lock()
 
 if sys.platform == 'win32':
+    from tryton.common.wtl import theMessageLoop
+
     class Dialog(gtk.Dialog):
 
         def run(self):
